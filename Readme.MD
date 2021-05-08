@@ -8,4 +8,6 @@ Dataset used: https://www.kaggle.com/meowmeowmeowmeowmeow/gtsrb-german-traffic-s
 
 Thanks to kaggle for the dataset.
 
+traffic_classifier.h5 is the older model with 43 classes whereas my_model.h5 is the new improved model made by us.
+
 Final year project: Manthan, Nikita, Rajkumar
