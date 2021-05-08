@@ -65,7 +65,7 @@ model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accur
 
 epochs = 15
 history = model.fit(X_train, y_train, batch_size=32, epochs=epochs, validation_data=(X_test, y_test))
-model.save("my_model.h5")
+model.save("my_model_new.h5")
 
 #plotting graphs for accuracy 
 plt.figure(0)
