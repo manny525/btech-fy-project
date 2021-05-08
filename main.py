@@ -93,13 +93,15 @@ def classify(count):
     pred = model.predict([image])[0]
     sign = 45
     index = 0
+    lastProb = 0
     for prob in pred:
-      if prob>0.71:
+      if prob>0.71 and prob>=lastProb:
         sign = index 
+        lastProb = prob
       index = index + 1
     return sign
 
-def contourIsCircle(perimeter, centroid, threshold):
+def contourIsSign(perimeter, centroid, threshold):
     # perimeter, centroid, threshold
     # Compute signature of contour
     result=[]
@@ -132,8 +134,7 @@ def shape_detection(img):
     
     # list for storing names of shapes
     for contour in contours:
-        # here we are ignoring first counter because 
-        # findcontour function detects whole image as shape
+        # here we are ignoring first counter because findcontour function detects whole image as shape
         if i == 0:
             i = 1
             continue
@@ -147,13 +148,11 @@ def shape_detection(img):
             if M['m00'] != 0.0:
                 x = int(M['m10']/M['m00'])
                 y = int(M['m01']/M['m00'])
-            # putting shape name at center of each shape
+
             if len(approx) == 3:
                 return True
-            elif len(approx) == 4:
-                return True
             else:
-                is_sign, distance = contourIsCircle(contour, [x, y], 0.35)
+                is_sign, distance = contourIsSign(contour, [x, y], 0.35)
                 return is_sign
         return False
 
@@ -173,9 +172,8 @@ def main(args):
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter('output.avi',fourcc, fps , (640,480))
 
-    # initialize the termination criteria for cam shift, indicating
-    # a maximum of ten iterations or movement by a least one pixel
-    # along with the bounding box of the ROI
+    # initialize the termination criteria for cam shift, indicating a maximum of ten iterations or movement 
+    # by a least one pixel along with the bounding box of the ROI
     termination = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1)
     roiBox = None
     roiHist = None

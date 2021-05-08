@@ -17,7 +17,7 @@ cur_path = os.getcwd()
 
 #Retrieving the images and their labels 
 for i in range(classes):
-    path = os.path.join(cur_path,'train',str(i))
+    path = os.path.join(cur_path,'train', str(i))
     images = os.listdir(path)
     print(i)
     for a in images:
