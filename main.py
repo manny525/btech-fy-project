@@ -62,7 +62,7 @@ SIGNS = { 1:'Speed limit (20km/h)',
 
 CLASS_NUMBER = 46
 
-# Clean all previous file
+# Clean all previous files
 def clean_images_output():
 	file_list = os.listdir('./outputs/')
 	for file_name in file_list:
@@ -80,7 +80,6 @@ def cropSign(image, coordinate):
     bottom = min([int(coordinate[1][1]), height-1])
     left = max([int(coordinate[0][0]), 0])
     right = min([int(coordinate[1][0]), width-1])
-    #print(top,left,bottom,right)
     return image[top:bottom,left:right]
 
 def classify(count):
@@ -89,7 +88,6 @@ def classify(count):
     image = image.resize((30,30))
     image = np.expand_dims(image, axis=0)
     image = np.array(image)
-    print(image.shape)
     pred = model.predict([image])[0]
     sign = 45
     index = 0
@@ -101,9 +99,9 @@ def classify(count):
       index = index + 1
     return sign
 
-def contourIsSign(perimeter, centroid, threshold):
-    # perimeter, centroid, threshold
+def contourIsCircle(perimeter, centroid, threshold):
     # Compute signature of contour
+    # threshold taken from a reference paper on signatures for circle detection
     result=[]
     for p in perimeter:
         p = p[0]
@@ -111,13 +109,14 @@ def contourIsSign(perimeter, centroid, threshold):
         result.append(distance)
     max_value = max(result)
     signature = [float(dist) / max_value for dist in result ]
+
     # Check signature of contour.
     temp = sum((1 - s) for s in signature)
     temp = temp / len(signature)
-    if temp < threshold: # is the sign
-        return True, max_value + 2
-    else:                 # is not the sign
-        return False, max_value + 2
+    if temp < threshold: # is a sign
+        return True
+    else:                # is not a sign
+        return False
 
 def shape_detection(img):
     # converting image into grayscale image
@@ -127,12 +126,10 @@ def shape_detection(img):
     _, threshold = cv2.threshold(gray, 170, 255, cv2.THRESH_BINARY)
     
     # using a findContours() function
-    contours, _ = cv2.findContours(
-        threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+    contours, _ = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     
     i = 0
     
-    # list for storing names of shapes
     for contour in contours:
         # here we are ignoring first counter because findcontour function detects whole image as shape
         if i == 0:
@@ -141,7 +138,7 @@ def shape_detection(img):
         area = cv2.contourArea(contour)
         if area > 60:
             # cv2.approxPloyDP() function to approximate the shape
-            approx = cv2.approxPolyDP(contour, 0.009 * cv2.arcLength(contour, True), True)
+            approx = cv2.approxPolyDP(co ntour, 0.009 * cv2.arcLength(contour, True), True)
           
             # finding center point of shape
             M = cv2.moments(contour)
@@ -149,10 +146,10 @@ def shape_detection(img):
                 x = int(M['m10']/M['m00'])
                 y = int(M['m01']/M['m00'])
 
-            if len(approx) == 3:
+            if len(approx) >= 3 and len(approx) <= 6: #checking shapes other then circle
                 return True
             else:
-                is_sign, distance = contourIsSign(contour, [x, y], 0.35)
+                is_sign = contourIsCircle(contour, [x, y], 0.35)
                 return is_sign
         return False
 
@@ -172,24 +169,11 @@ def main(args):
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter('output.avi',fourcc, fps , (640,480))
 
-    # initialize the termination criteria for cam shift, indicating a maximum of ten iterations or movement 
-    # by a least one pixel along with the bounding box of the ROI
-    termination = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1)
-    roiBox = None
-    roiHist = None
-
     success = True
-    similitary_contour_with_circle = 0.65   # parameter
     count = 0
-    current_sign = None
-    current_text = ""
-    current_size = 0
-    sign_count = 0
     coordinates = []
-    position = []
-    file = open("Output.txt", "w")
     while True:
-        success,frame = vidcap.read()
+        success, frame = vidcap.read()
         if not success:
             print("FINISHED")
             break
@@ -216,31 +200,31 @@ def main(args):
         blue_upper = np.array([118,255,255], np.uint8)
         blue_mask = cv2.inRange(hsvFrame, blue_lower, blue_upper)
         
-        # Morphological Transform, Dilation for each color and bitwise_and operator
-        # between imageFrame and mask determines to detect only that particular color
+        # Morphological Transform, Dilation (to make something wider/larger) for each color and bitwise_and 
+        # operator between imageFrame and mask determines to detect only that particular color
         kernal = np.ones((5, 5), "uint8")
 
         original_image = imageFrame.copy()
         
         # For red color
         red_mask = cv2.dilate(red_mask, kernal)
-        res_red = cv2.bitwise_and(imageFrame, imageFrame, mask = red_mask)
+        res_red = cv2.bitwise_and(hsvFrame, hsvFrame, mask = red_mask)
         
         # For yellow color
         yellow_mask = cv2.dilate(yellow_mask, kernal)
-        res_yellow = cv2.bitwise_and(imageFrame, imageFrame, mask = yellow_mask)
+        res_yellow = cv2.bitwise_and(hsvFrame, hsvFrame, mask = yellow_mask)
         
         # For blue color
         blue_mask = cv2.dilate(blue_mask, kernal)
-        res_blue = cv2.bitwise_and(imageFrame, imageFrame, mask = blue_mask)
+        res_blue = cv2.bitwise_and(hsvFrame, hsvFrame, mask = blue_mask)
         
         # Creating contour to track red color
-        contours, hierarchy = cv2.findContours(red_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+        contours, _ = cv2.findContours(red_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
         
         for pic, contour in enumerate(contours):
             area = cv2.contourArea(contour)
             if(area > 300):
-                x, y, w, h = cv2.boundingRect(contour)
+                x, y, w, h = cv2.boundingRect(contour) #labelling
                 coordinate = [(x,y), (x+w,y+h)]
                 image = cropSign(imageFrame, coordinate)
                 if image is not None:
@@ -254,10 +238,9 @@ def main(args):
                             cv2.rectangle(original_image, coordinate[0],coordinate[1], (0, 255, 0), 1)
                             font = cv2.FONT_HERSHEY_PLAIN
                             cv2.putText(original_image,SIGNS[sign+1],(coordinate[0][0], coordinate[0][1] -15), font, 1,(0,0,255),2,cv2.LINE_4)
-                            count = count + 1
         
         # Creating contour to track yellow color
-        contours, hierarchy = cv2.findContours(yellow_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+        contours, _ = cv2.findContours(yellow_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
         
         for pic, contour in enumerate(contours):
             area = cv2.contourArea(contour)
@@ -279,7 +262,8 @@ def main(args):
                             
         
         # Creating contour to track blue color
-        contours, hierarchy = cv2.findContours(blue_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+        contours, _ = cv2.findContours(blue_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+        
         for pic, contour in enumerate(contours):
             area = cv2.contourArea(contour)
             if(area > 300):
@@ -297,7 +281,6 @@ def main(args):
                             cv2.rectangle(original_image, coordinate[0],coordinate[1], (0, 255, 0), 1)
                             font = cv2.FONT_HERSHEY_PLAIN
                             cv2.putText(original_image,SIGNS[sign+1],(coordinate[0][0], coordinate[0][1] -15), font, 1,(0,0,255),2,cv2.LINE_4)
-                            count = count + 1
 
         out.write(original_image)
     return 
@@ -311,25 +294,6 @@ if __name__ == '__main__':
       default= "./german_short.mp4",
       help= "Video to be analyzed"
       )
-    
-    parser.add_argument(
-      '--min_size_components',
-      type = int,
-      default= 300,
-      help= "Min size component to be reserved"
-      )
-
-    
-    parser.add_argument(
-      '--similitary_contour_with_circle',
-      type = float,
-      default= 0.65,
-      help= "Similitary to a circle"
-      )
-    
-    parser.add_argument(
-        '--model',
-        default= './data_svm.dat')
 
     args = parser.parse_args()
     main(args)

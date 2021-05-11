@@ -36,6 +36,7 @@ data = np.array(data)
 labels = np.array(labels)
 
 print(data.shape, labels.shape)
+
 #Splitting training and testing dataset
 X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.2, random_state=42)
 
@@ -46,16 +47,16 @@ y_train = to_categorical(y_train, classes)
 y_test = to_categorical(y_test, classes)
 
 #Building the model
-model = Sequential()
-model.add(Conv2D(filters=32, kernel_size=(5,5), activation='relu', input_shape=X_train.shape[1:]))
-model.add(Conv2D(filters=32, kernel_size=(5,5), activation='relu'))
-model.add(MaxPool2D(pool_size=(2, 2)))
+model = Sequential() # input 30x30
+model.add(Conv2D(filters=32, kernel_size=(5,5), activation='relu', input_shape=X_train.shape[1:])) # output 26x26
+model.add(Conv2D(filters=32, kernel_size=(5,5), activation='relu')) # output 22x22
+model.add(MaxPool2D(pool_size=(2, 2)))# output 11x11
 model.add(Dropout(rate=0.25))
-model.add(Conv2D(filters=64, kernel_size=(3, 3), activation='relu'))
-model.add(Conv2D(filters=64, kernel_size=(3, 3), activation='relu'))
-model.add(MaxPool2D(pool_size=(2, 2)))
+model.add(Conv2D(filters=64, kernel_size=(3, 3), activation='relu'))# output 9x9
+model.add(Conv2D(filters=64, kernel_size=(3, 3), activation='relu'))# output 7x7
+model.add(MaxPool2D(pool_size=(2, 2)))# output 3x3
 model.add(Dropout(rate=0.25))
-model.add(Flatten())
+model.add(Flatten())# output 64x3x3 = 576
 model.add(Dense(256, activation='relu'))
 model.add(Dropout(rate=0.5))
 model.add(Dense(classes, activation='softmax'))
